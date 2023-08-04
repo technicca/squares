@@ -77,9 +77,10 @@ if side.lower() == "black":
     result = stockfish.get_best_move()
     game_state.push_uci(result)
 
-# Variables to store the selected piece and its square
+# Variables to store the selected piece, its square, and its legal moves
 selected_piece = None
-selected_square = ''
+selected_square = None
+legal_moves = []
 
 # Main game loop
 run = True
@@ -91,37 +92,58 @@ while run:
             run = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             x, y = event.pos
-            if selected_piece is None:
-                selected_square = chess.square(x // 75, 7 - y // 75)
-                selected_piece = game_state.piece_at(selected_square)
-            else:
-                move = chess.Move(selected_square, chess.square(x // 75, 7 - y // 75))
-                if move in game_state.legal_moves:
-                    game_state.push(move)
-                    stockfish.set_position(game_state.move_stack)
-                    result = stockfish.get_best_move()
-                    game_state.push_uci(result)
+            square = chess.square(x // 75, 7 - y // 75)
+            piece = game_state.piece_at(square)
+            if event.button == 1:  # Left mouse button
+                if selected_piece is None:
+                    if piece is not None:
+                        selected_square = square
+                        selected_piece = piece
+                        legal_moves = [move for move in game_state.legal_moves if move.from_square == selected_square]
                 else:
-                    print('Illegal move')
+                    if piece is not None and piece.color == selected_piece.color:
+                        # The user clicked on another piece of the same color
+                        selected_square = square
+                        selected_piece = piece
+                        legal_moves = [move for move in game_state.legal_moves if move.from_square == selected_square]
+                    else:
+                        move = chess.Move(selected_square, square)
+                        if move in game_state.legal_moves:
+                            game_state.push(move)
+                            stockfish.set_position(game_state.move_stack)
+                            result = stockfish.get_best_move()
+                            game_state.push_uci(result)
+                            selected_piece = None
+                            selected_square = None
+                            legal_moves = []
+                        else:
+                            print('Illegal move')
+            elif event.button == 3:  # Right mouse button
                 selected_piece = None
-                
+                selected_square = None
+                legal_moves = []
+
     # Drawing the chessboard
     screen.blit(chessboard, (0, 0))
 
+    # Drawing the selected square and legal moves
+    if selected_square is not None:
+        pygame.draw.rect(screen, (255, 255, 0), (chess.square_file(selected_square) * SQUARE_SIZE[0], (7 - chess.square_rank(selected_square)) * SQUARE_SIZE[1], SQUARE_SIZE[0], SQUARE_SIZE[1]), 2)
+        for move in legal_moves:
+            pygame.draw.rect(screen, (0, 255, 0), (chess.square_file(move.to_square) * SQUARE_SIZE[0], (7 - chess.square_rank(move.to_square)) * SQUARE_SIZE[1], SQUARE_SIZE[0], SQUARE_SIZE[1]), 2)
+
+    # Drawing the pieces
     for i in range(8):
         for j in range(8):
             piece = game_state.piece_at(chess.square(i, j))
             if piece:
-                # Calculate the top-left corner of the square
                 square_x = i * SQUARE_SIZE[0]
                 square_y = (7 - j) * SQUARE_SIZE[1]
-
-                # Adjust the position of the piece so that the center of the piece aligns with the center of the square
                 piece_x = square_x + (SQUARE_SIZE[0] - pieces[str(piece)].get_width()) // 2
                 piece_y = square_y + (SQUARE_SIZE[1] - pieces[str(piece)].get_height()) // 2
-
                 screen.blit(pieces[str(piece)], (piece_x, piece_y))
 
     pygame.display.flip()  # updates the display
 
 pygame.quit()
+
