@@ -7,7 +7,6 @@ for piece in ['p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K']:
     piece_image = pygame.image.load(f'img/{piece}.png')
     pieces[piece] = pygame.transform.scale(piece_image, PIECE_SIZE)
 
-
 chessboard = pygame.image.load('img/board2.png')
 chessboard = pygame.transform.scale(chessboard, (BOARD_WIDTH, BOARD_HEIGHT))
 
@@ -43,7 +42,6 @@ while run and not side_chosen:
     
     screen.fill((30, 30, 30))
 
-    
     pygame.draw.rect(screen, (255, 255, 255), white_button)
     pygame.draw.rect(screen, (0, 0, 0), black_button)
 
