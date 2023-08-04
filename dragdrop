@@ -2,33 +2,26 @@ import pygame
 import chess
 from stockfish import Stockfish
 from const import *
-# Load the images
 pieces = {}
 for piece in ['p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K']:
     piece_image = pygame.image.load(f'img/{piece}.png')
     pieces[piece] = pygame.transform.scale(piece_image, PIECE_SIZE)
 
 
-# Note that this is an image and not the game board state object.
 chessboard = pygame.image.load('img/board2.png')
 chessboard = pygame.transform.scale(chessboard, (BOARD_WIDTH, BOARD_HEIGHT))
 
-# Initialize Pygame and set up the display window
 pygame.init()
-screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT), pygame.RESIZABLE)
+screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 
-# Set up the game clock
 clock = pygame.time.Clock()
 
-# Set up the Stockfish engine
 stockfish = Stockfish()
 
-# Creating buttons for side selection
 font = pygame.font.Font(None, 32)
 white_button = pygame.Rect(WIN_WIDTH // 2 - 100, WIN_HEIGHT // 2, BUTTON_WIDTH, BUTTON_HEIGHT)
 black_button = pygame.Rect(WIN_WIDTH // 2 + 20, WIN_HEIGHT // 2, BUTTON_WIDTH, BUTTON_HEIGHT)
-
-# Side choosing loop
+# Choosing a side
 run = True
 side_chosen = False
 side = ''
@@ -37,20 +30,20 @@ while run and not side_chosen:
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = event.pos  # gets mouse position
-            # checks if mouse position is over the button
+            mouse_pos = event.pos  
+            
             if white_button.collidepoint(mouse_pos):
-                # prints current location of mouse
+                
                 side = 'white'
                 side_chosen = True
             elif black_button.collidepoint(mouse_pos):
                 side = 'black'
                 side_chosen = True
 
-    # Filling the background
+    
     screen.fill((30, 30, 30))
 
-    # Render side choosing buttons
+    
     pygame.draw.rect(screen, (255, 255, 255), white_button)
     pygame.draw.rect(screen, (0, 0, 0), black_button)
 
@@ -62,28 +55,24 @@ while run and not side_chosen:
     screen.blit(b_text, (black_button.x + (black_button.w - b_text.get_width()) // 2, 
                          black_button.y + (black_button.h - b_text.get_height()) // 2))
 
-    pygame.display.flip()  # updates the screen
+    pygame.display.flip()  
 
-# This is the game state object.
 game_state = chess.Board()
 
-# If player chooses black, then Stockfish makes the first move
 if side.lower() == "black":
     result = stockfish.get_best_move()
     game_state.push_uci(result)
 
-## Variables to store the selected piece, its rect, its legal moves, and drag status
 selected_piece = None
 selected_rect = None
 legal_moves = []
 dragging = False
 offset = None
-click_move = [] # This will store the squares selected by clicking
-
-# Main game loop
+click_move = [] 
+#Main
 run = True
 while run:
-    clock.tick(64)  # 64 frames per second
+    clock.tick(64)  
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -92,7 +81,7 @@ while run:
             x, y = event.pos
             square = chess.square(x // 75, 7 - y // 75)
             piece = game_state.piece_at(square)
-            if event.button == 1:  # Left mouse button
+            if event.button == 1:  
                 if piece is not None and not dragging:
                     selected_square = square
                     selected_piece = piece
@@ -100,15 +89,15 @@ while run:
                     legal_moves = [move for move in game_state.legal_moves if move.from_square == selected_square]
                     offset = x - selected_rect.x, y - selected_rect.y
                     dragging = True
-                # If a piece is not being dragged and a square is clicked
+                
                 elif not dragging:
-                    # If no piece has been selected for a click move yet
+                    
                     if len(click_move) == 0 and piece is not None:
                         click_move.append(square)
-                    # If a piece has been selected and the second square is clicked
+                    
                     elif len(click_move) == 1:
                         click_move.append(square)
-                        # Check if the move is legal
+                        
                         for move in game_state.legal_moves:
                             if move.from_square == click_move[0] and move.to_square == click_move[1]:
                                 game_state.push(move)
@@ -116,9 +105,8 @@ while run:
                                 result = stockfish.get_best_move()
                                 game_state.push_uci(result)
                                 break
-                        # Reset the click move
+                        
                         click_move = []
-
 
         elif event.type == pygame.MOUSEBUTTONUP:
             if dragging:
@@ -138,15 +126,6 @@ while run:
                 legal_moves = []
                 offset = None
 
-        elif event.type == pygame.VIDEORESIZE:
-            WIN_WIDTH, WIN_HEIGHT = event.w, event.h
-            BOARD_WIDTH, BOARD_HEIGHT = WIN_WIDTH, WIN_HEIGHT
-            SQUARE_SIZE = (BOARD_WIDTH // 8, BOARD_HEIGHT // 8)
-            PIECE_SIZE = (SQUARE_SIZE[0] - 4, SQUARE_SIZE[1] - 4)
-            chessboard = pygame.transform.scale(chessboard, (BOARD_WIDTH, BOARD_HEIGHT))
-            for piece_key in pieces:
-                pieces[piece_key] = pygame.transform.scale(pieces[piece_key], PIECE_SIZE)
-            screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT), pygame.RESIZABLE)
         elif event.type == pygame.MOUSEMOTION:
             if dragging:
                 x, y = event.pos
@@ -154,10 +133,10 @@ while run:
                 selected_rect.y = y - offset[1]
         
 
-    # Drawing the chessboard
+    
     screen.blit(chessboard, (0, 0))
 
-    # Drawing the pieces
+    
     for i in range(8):
         for j in range(8):
             piece = game_state.piece_at(chess.square(i, j))
@@ -168,17 +147,16 @@ while run:
                 piece_y = square_y + (SQUARE_SIZE[1] - pieces[str(piece)].get_height()) // 2
                 screen.blit(pieces[str(piece)], (piece_x, piece_y))
 
-    # Drawing the selected piece
+    
     if selected_piece is not None and selected_rect is not None:
         screen.blit(pieces[str(selected_piece)], (selected_rect.x, selected_rect.y))
 
-    # Highlighting the valid moves
+    
     if legal_moves:
         for move in legal_moves:
             x, y = move.to_square % 8, 7 - move.to_square // 8
             pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(x * 75, y * 75, 75, 75), 2)
 
-    pygame.display.flip()  # updates the display
+    pygame.display.flip()  
 
 pygame.quit()
-
