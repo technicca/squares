@@ -6,7 +6,7 @@ WIN_WIDTH, WIN_HEIGHT = 600, 600
 BOARD_WIDTH, BOARD_HEIGHT = 600, 600
 PIECE_SIZE = (75, 75)
 BUTTON_WIDTH, BUTTON_HEIGHT = 80, 30
-
+SQUARE_SIZE = (BOARD_WIDTH // 8, BOARD_HEIGHT // 8)
 # Load the images
 pieces = {}
 for piece in ['p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K']:
@@ -15,7 +15,7 @@ for piece in ['p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K']:
 
 
 # Note that this is an image and not the game board state object.
-chessboard = pygame.image.load('img/board.png')
+chessboard = pygame.image.load('img/board2.png')
 chessboard = pygame.transform.scale(chessboard, (BOARD_WIDTH, BOARD_HEIGHT))
 
 # Initialize Pygame and set up the display window
@@ -112,8 +112,15 @@ while run:
         for j in range(8):
             piece = game_state.piece_at(chess.square(i, j))
             if piece:
-                screen.blit(pieces[str(piece)], (i * PIECE_SIZE[0], (7 - j) * PIECE_SIZE[1]))
+                # Calculate the top-left corner of the square
+                square_x = i * SQUARE_SIZE[0]
+                square_y = (7 - j) * SQUARE_SIZE[1]
 
+                # Adjust the position of the piece so that the center of the piece aligns with the center of the square
+                piece_x = square_x + (SQUARE_SIZE[0] - pieces[str(piece)].get_width()) // 2
+                piece_y = square_y + (SQUARE_SIZE[1] - pieces[str(piece)].get_height()) // 2
+
+                screen.blit(pieces[str(piece)], (piece_x, piece_y))
 
     pygame.display.flip()  # updates the display
 
