@@ -2,11 +2,12 @@ import pygame
 import chess
 from stockfish import Stockfish
 from const import *
+import sys
+
 pieces = {}
 for piece in ['p', 'r', 'n', 'b', 'q', 'k', 'P', 'R', 'N', 'B', 'Q', 'K']:
     piece_image = pygame.image.load(f'img/{piece}.png')
     pieces[piece] = pygame.transform.scale(piece_image, PIECE_SIZE)
-
 
 # Note that this is an image and not the game board state object.
 chessboard = pygame.image.load('img/board2.png')
@@ -76,6 +77,10 @@ selected_piece = None
 selected_square = None
 legal_moves = []
 
+# Variables for dragging functionality
+dragging_piece = False
+drag_offset = (0, 0)
+
 # Main game loop
 run = True
 while run:
@@ -116,6 +121,33 @@ while run:
                 selected_piece = None
                 selected_square = None
                 legal_moves = []
+            elif event.button == 1:  # Left mouse button
+                if piece is not None and piece.color == selected_piece.color:
+                    # Start dragging the piece
+                    dragging_piece = True
+                    drag_offset = (x - (chess.square_file(square) * SQUARE_SIZE[0]),
+                                   y - ((7 - chess.square_rank(square)) * SQUARE_SIZE[1]))
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:  # Left mouse button
+                if dragging_piece:
+                    dragging_piece = False
+                    x, y = event.pos
+                    dest_square = chess.square(x // 75, 7 - y // 75)
+                    move = chess.Move(selected_square, dest_square)
+                    if move in game_state.legal_moves:
+                        game_state.push(move)
+                        stockfish.set_position(game_state.move_stack)
+                        result = stockfish.get_best_move()
+                        game_state.push_uci(result)
+                    selected_piece = None
+                    selected_square = None
+                    legal_moves = []
+
+    # Update the position of the dragged piece
+    if dragging_piece:
+        x, y = pygame.mouse.get_pos()
+        piece_x = x - drag_offset[0]
+        piece_y = y - drag_offset[1]
 
     # Drawing the chessboard
     screen.blit(chessboard, (0, 0))
@@ -135,9 +167,15 @@ while run:
                 square_y = (7 - j) * SQUARE_SIZE[1]
                 piece_x = square_x + (SQUARE_SIZE[0] - pieces[str(piece)].get_width()) // 2
                 piece_y = square_y + (SQUARE_SIZE[1] - pieces[str(piece)].get_height()) // 2
+                if dragging_piece and selected_square == chess.square(i, j):
+                    # Skip drawing the piece if it is being dragged
+                    continue
                 screen.blit(pieces[str(piece)], (piece_x, piece_y))
+
+    # Draw the dragged piece
+    if dragging_piece and selected_piece is not None:
+        screen.blit(pieces[str(selected_piece)], (piece_x, piece_y))
 
     pygame.display.flip()  # updates the display
 
 pygame.quit()
-
