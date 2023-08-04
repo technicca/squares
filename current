@@ -10,7 +10,7 @@ chessboard = pygame.image.load('img/board2.png')
 chessboard = pygame.transform.scale(chessboard, (BOARD_WIDTH, BOARD_HEIGHT))
 
 pygame.init()
-screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT), pygame.RESIZABLE)
 
 clock = pygame.time.Clock()
 
@@ -28,8 +28,7 @@ while run and not side_chosen:
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = event.pos  
-            
+            mouse_pos = event.pos
             if white_button.collidepoint(mouse_pos):
                 
                 side = 'white'
@@ -86,12 +85,23 @@ run = True
 dragging = False
 start_dragging = False
 click_move = []
+move_history = []
 while run:
     clock.tick(64)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
+        # revert last move
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE:  # use any key you prefer
+                for _ in range(2):  # pop two moves
+                    if len(game_state.move_stack) > 0:
+                        game_state.pop()
+                        if move_history:  # check if move_history is not empty
+                            move_history.pop()  # also remove the move from move history
+                stockfish.set_position(game_state.move_stack)
+
         elif event.type == pygame.MOUSEBUTTONDOWN:
             x, y = event.pos
             square = chess.square(x // 75, 7 - y // 75)
@@ -116,10 +126,12 @@ while run:
                         for move in game_state.legal_moves:
                             if move.from_square == click_move[0] and move.to_square == click_move[1]:
                                 game_state.push(move)
+                                move_history.append(move.uci())  # add this line
                                 stockfish.set_position(game_state.move_stack)
                                 result = stockfish.get_best_move()
                                 game_state.push_uci(result)
                                 break
+
                         
                         click_move = []
 
@@ -139,6 +151,7 @@ while run:
                     if x * SQUARE_SIZE[0] < selected_rect.x + SQUARE_SIZE[0] / 2 < (x + 1) * SQUARE_SIZE[0] and y * SQUARE_SIZE[1] \
                             < selected_rect.y + SQUARE_SIZE[1] / 2 < (y + 1) * SQUARE_SIZE[1]:
                         game_state.push(move)
+                        move_history.append(move.uci())  # add this line
                         stockfish.set_position(game_state.move_stack)
                         result = stockfish.get_best_move()
                         game_state.push_uci(result)
@@ -148,16 +161,6 @@ while run:
                 selected_rect = None
                 legal_moves = []
                 offset = None
-
-        elif event.type == pygame.VIDEORESIZE:
-            WIN_WIDTH, WIN_HEIGHT = event.w, event.h
-            BOARD_WIDTH, BOARD_HEIGHT = WIN_WIDTH, WIN_HEIGHT
-            SQUARE_SIZE = (BOARD_WIDTH // 8, BOARD_HEIGHT // 8)
-            PIECE_SIZE = (SQUARE_SIZE[0] - 4, SQUARE_SIZE[1] - 4)
-            chessboard = pygame.transform.scale(chessboard, (BOARD_WIDTH, BOARD_HEIGHT))
-            for piece_key in pieces:
-                pieces[piece_key] = pygame.transform.scale(pieces[piece_key], PIECE_SIZE)
-            screen = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT), pygame.RESIZABLE)
 
     screen.blit(chessboard, (0, 0))
 
@@ -178,7 +181,11 @@ while run:
         for move in legal_moves:
             x, y = move.to_square % 8, 7 - move.to_square // 8
             pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(x * 75, y * 75, 75, 75), 2)
-
+        # Display move history
+    for i, move in enumerate(move_history):
+        move_text = font.render(move, True, (255, 255, 255))
+        screen.blit(move_text, (WIN_WIDTH + 10, 10 + i * 20))
+    
     pygame.display.flip()
 
 pygame.quit()
