@@ -3,6 +3,7 @@ import chess
 from stockfish import Stockfish
 from const import *
 from utils import load_pieces, get_legal_moves
+import copy
 
 pieces = load_pieces(PIECE_SIZE)
 
@@ -59,14 +60,6 @@ if side.lower() == "black":
     result = stockfish.get_best_move()
     game_state.push_uci(result)
 
-selected_piece = None
-selected_rect = None
-legal_moves = []
-dragging = False
-offset = None
-click_move = []
-
-#Main
 def handle_click(square):
     global game_state, stockfish
     if selected_piece is not None:
@@ -81,17 +74,41 @@ def handle_click(square):
         legal_moves = []
         offset = None
 
-run = True
+# Main variables
+selected_piece = None
+selected_rect = None
+legal_moves = []
 dragging = False
+offset = None
 start_dragging = False
 click_move = []
 move_history = []
+move_history_rects = []
+game_state_history = [copy.deepcopy(game_state)]
+
+#Main
+run = True
+
 while run:
-    clock.tick(64)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            x, y = event.pos
+            point = pygame.Vector2(x, y)
+            for i, rect in enumerate(move_history_rects):
+                if rect.collidepoint(point):
+                    if i < len(game_state_history):  # Check if i is a valid index
+                        # Revert game state to the clicked move
+                        game_state = copy.deepcopy(game_state_history[i])
+                        stockfish.set_position(game_state.move_stack)
+                        # Remove all the moves after the clicked move
+                        del move_history[i + 1:]
+                        del game_state_history[i + 1:]
+                        del move_history_rects[i + 1:]
+                    break
+
         # revert last move
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_BACKSPACE:  # use any key you prefer
@@ -122,6 +139,7 @@ while run:
                     
                     elif len(click_move) == 1:
                         click_move.append(square)
+                        game_state_history.append(copy.deepcopy(game_state))
                         
                         for move in game_state.legal_moves:
                             if move.from_square == click_move[0] and move.to_square == click_move[1]:
@@ -132,7 +150,6 @@ while run:
                                 game_state.push_uci(result)
                                 break
 
-                        
                         click_move = []
 
         elif event.type == pygame.MOUSEMOTION:
@@ -148,14 +165,15 @@ while run:
                 dragging = False
                 for move in legal_moves:
                     x, y = chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square)
-                    if x * SQUARE_SIZE[0] < selected_rect.x + SQUARE_SIZE[0] / 2 < (x + 1) * SQUARE_SIZE[0] and y * SQUARE_SIZE[1] \
-                            < selected_rect.y + SQUARE_SIZE[1] / 2 < (y + 1) * SQUARE_SIZE[1]:
+                    if x * SQUARE_SIZE[0] < selected_rect.x + SQUARE_SIZE[0] / 2 < (x + 1) * SQUARE_SIZE[0] and y * SQUARE_SIZE[1] < selected_rect.y + SQUARE_SIZE[1] / 2 < (y + 1) * SQUARE_SIZE[1]:
+                        game_state_history.append(copy.deepcopy(game_state))  # add this line
                         game_state.push(move)
                         move_history.append(move.uci())  # add this line
                         stockfish.set_position(game_state.move_stack)
                         result = stockfish.get_best_move()
                         game_state.push_uci(result)
                         break
+
                 selected_piece = None
                 selected_square = None
                 selected_rect = None
@@ -184,8 +202,10 @@ while run:
         # Display move history
     for i, move in enumerate(move_history):
         move_text = font.render(move, True, (255, 255, 255))
-        screen.blit(move_text, (WIN_WIDTH + 10, 10 + i * 20))
-    
-    pygame.display.flip()
+        rect = pygame.Rect(WIN_WIDTH * 0.75, 20 + i * 20, move_text.get_width(), move_text.get_height())
+        move_history_rects.append(rect)
+        screen.blit(move_text, (rect.x, rect.y))  # Adjusted position
 
+    pygame.display.flip()
+    clock.tick(60)
 pygame.quit()
