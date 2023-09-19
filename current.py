@@ -59,6 +59,7 @@ game_state = chess.Board()
 if side.lower() == "black":
     result = stockfish.get_best_move()
     game_state.push_uci(result)
+    move_history.append(result)
 
 def handle_click(square):
     global game_state, stockfish
@@ -68,6 +69,8 @@ def handle_click(square):
             stockfish.set_position(game_state.move_stack)
             result = stockfish.get_best_move()
             game_state.push_uci(result)
+            move_history.append(result)
+            
         selected_piece = None
         selected_square = None
         selected_rect = None
@@ -111,7 +114,7 @@ while run:
 
         # revert last move
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_BACKSPACE:  # use any key you prefer
+            if event.key == pygame.K_BACKSPACE:
                 for _ in range(2):  # pop two moves
                     if len(game_state.move_stack) > 0:
                         game_state.pop()
@@ -121,13 +124,13 @@ while run:
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             x, y = event.pos
-            square = chess.square(x // 75, 7 - y // 75)
+            square = chess.square(x // SQUARE_SIZE[0], 7 - y // SQUARE_SIZE[1])
             piece = game_state.piece_at(square)
             if event.button == 1:  
                 if piece is not None and not dragging:
                     selected_square = square
                     selected_piece = piece
-                    selected_rect = pygame.Rect(x - PIECE_SIZE[0] // 2, y - PIECE_SIZE[1] // 2, PIECE_SIZE[0], PIECE_SIZE[1])
+                    selected_rect = pygame.Rect(x - PIECE_SIZE[0] // 2, y - PIECE_SIZE[1] // 2, SQUARE_SIZE[0], SQUARE_SIZE[1])
                     legal_moves = [move for move in game_state.legal_moves if move.from_square == selected_square]
                     offset = x - selected_rect.x, y - selected_rect.y
                     start_dragging = True
@@ -148,6 +151,7 @@ while run:
                                 stockfish.set_position(game_state.move_stack)
                                 result = stockfish.get_best_move()
                                 game_state.push_uci(result)
+                                move_history.append(result)
                                 break
 
                         click_move = []
@@ -172,6 +176,7 @@ while run:
                         stockfish.set_position(game_state.move_stack)
                         result = stockfish.get_best_move()
                         game_state.push_uci(result)
+                        move_history.append(result)
                         break
 
                 selected_piece = None
@@ -198,7 +203,7 @@ while run:
     if legal_moves:
         for move in legal_moves:
             x, y = move.to_square % 8, 7 - move.to_square // 8
-            pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(x * 75, y * 75, 75, 75), 2)
+            pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(x * SQUARE_SIZE[0], y * SQUARE_SIZE[1], SQUARE_SIZE[0], SQUARE_SIZE[1]), 2)
         # Display move history
     for i, move in enumerate(move_history):
         move_text = font.render(move, True, (255, 255, 255))
